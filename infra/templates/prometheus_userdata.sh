@@ -9,25 +9,28 @@ dnf install -y amazon-cloudwatch-agent
 useradd -r -s /bin/false prometheus || true
 mkdir -p /opt/prometheus /opt/prometheus/data /opt/deploy
 
+# Log directory for service stdout/stderr (systemd will write here)
+mkdir -p /var/log/app
+touch /var/log/app/prometheus.log
+
 # CloudWatch agent config — ships prometheus service logs + setup script logs
 cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<CWCONFIG
 {
   "logs": {
     "logs_collected": {
-      "journald": {
-        "units": ["prometheus"],
-        "collect_list": [{
-          "unit": "prometheus",
-          "log_group_name": "/eggtive-spm/${environment}/prometheus",
-          "log_stream_name": "{instance_id}"
-        }]
-      },
       "files": {
-        "collect_list": [{
-          "file_path": "/var/log/cloud-init-output.log",
-          "log_group_name": "/eggtive-spm/${environment}/userdata",
-          "log_stream_name": "prometheus-{instance_id}"
-        }]
+        "collect_list": [
+          {
+            "file_path": "/var/log/app/prometheus.log",
+            "log_group_name": "/eggtive-spm/${environment}/prometheus",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/cloud-init-output.log",
+            "log_group_name": "/eggtive-spm/${environment}/userdata",
+            "log_stream_name": "prometheus-{instance_id}"
+          }
+        ]
       }
     }
   }
@@ -106,6 +109,8 @@ ExecStart=/opt/prometheus/prometheus \
   --storage.tsdb.retention.time=15d \
   --web.listen-address=:9090
 User=prometheus
+StandardOutput=append:/var/log/app/prometheus.log
+StandardError=append:/var/log/app/prometheus.log
 Restart=always
 RestartSec=30
 StartLimitIntervalSec=0

@@ -14,25 +14,28 @@ touch /opt/app/backend.env
 chmod 600 /opt/app/backend.env
 chown appuser:appuser /opt/app/backend.env
 
+# Log directory for service stdout/stderr (systemd will write here)
+mkdir -p /var/log/app
+touch /var/log/app/backend.log
+
 # CloudWatch agent config — ships backend service logs + setup script logs
 cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<CWCONFIG
 {
   "logs": {
     "logs_collected": {
-      "journald": {
-        "units": ["backend"],
-        "collect_list": [{
-          "unit": "backend",
-          "log_group_name": "/eggtive-spm/${environment}/backend",
-          "log_stream_name": "{instance_id}"
-        }]
-      },
       "files": {
-        "collect_list": [{
-          "file_path": "/var/log/cloud-init-output.log",
-          "log_group_name": "/eggtive-spm/${environment}/userdata",
-          "log_stream_name": "backend-{instance_id}"
-        }]
+        "collect_list": [
+          {
+            "file_path": "/var/log/app/backend.log",
+            "log_group_name": "/eggtive-spm/${environment}/backend",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/cloud-init-output.log",
+            "log_group_name": "/eggtive-spm/${environment}/userdata",
+            "log_stream_name": "backend-{instance_id}"
+          }
+        ]
       }
     }
   }
@@ -135,6 +138,8 @@ ExecStartPre=+/opt/deploy/backend-setup.sh
 ExecStart=/usr/bin/java -jar /opt/app/backend.jar
 User=appuser
 EnvironmentFile=/opt/app/backend.env
+StandardOutput=append:/var/log/app/backend.log
+StandardError=append:/var/log/app/backend.log
 Restart=always
 RestartSec=30
 StartLimitIntervalSec=0

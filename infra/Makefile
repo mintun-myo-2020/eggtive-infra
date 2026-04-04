@@ -1,4 +1,4 @@
-.PHONY: bootstrap init up down status plan-up plan-down \
+.PHONY: bootstrap init up update down status plan-up plan-down \
 	seed seed-artifacts seed-realm seed-backend seed-frontend seed-all \
 	deploy-dev \
 	taint-backend taint-keycloak taint-prometheus taint-all \
@@ -46,23 +46,17 @@ init:
 # ============================================================
 # Environment lifecycle
 #
-# make up:
-#   Phase 1 — terraform apply env_active=false
-#             Creates S3 buckets, VPC, CloudFront, IAM, SSM, ACM
-#             (no EC2s, no RDS, no ALB)
+# make up      — FIRST-TIME bootstrap only
+#                Phase 1: base infra (S3, VPC, CloudFront, IAM)
+#                Phase 2: upload artifacts to S3
+#                Phase 3: compute (EC2s, RDS, ALB, VPC endpoints)
 #
-#   Phase 2 — upload infra artifacts to S3
-#             Keycloak tarball, Prometheus tarball, realm exports
-#             (backend JAR is uploaded by app repo CI, not here)
+# make update  — ONGOING changes (add observability, update userdata, etc.)
+#                Single terraform apply. Does NOT destroy ALB/VPC origin.
+#                Use this after changing .tf files or userdata templates.
 #
-#   Phase 3 — terraform apply env_active=true
-#             Creates EC2s, RDS, ALB, VPC endpoints, DNS, VPC origin
-#             EC2s boot and find artifacts already in S3
-#
-# make down:
-#   terraform apply env_active=false
-#   Destroys EC2s, RDS, ALB, VPC endpoints
-#   S3 buckets + artifacts persist
+# make down    — Tear down on-demand resources (EC2s, RDS, ALB, VPC endpoints)
+#                S3 buckets + artifacts persist.
 # ============================================================
 
 up:
@@ -78,7 +72,7 @@ up:
 		|| (echo "ERROR: $(PROMETHEUS_DIST) not found. Download it first." && exit 1)
 	@test -f exports/realm-export.json && \
 		aws s3 cp exports/realm-export.json s3://$(PROJECT)-artifacts/keycloak/realm-export.json \
-		|| echo "SKIP: exports/realm-export.json not found (realm won't be auto-imported)"
+		|| echo "SKIP: exports/realm-export.json not found"
 	@if [ -f exports/realm-export-dev-users.json ]; then \
 		aws s3 cp exports/realm-export-dev-users.json s3://$(PROJECT)-artifacts/keycloak/realm-export-dev-users.json; \
 	fi
@@ -89,8 +83,28 @@ up:
 	@echo "=== Done. Environment is up. ==="
 	@echo "Backend JAR: upload via app repo CI or 'make seed-backend'"
 
+update:
+	@echo "=== Uploading artifacts to S3 (if present) ==="
+	@test -f $(KEYCLOAK_DIST) && \
+		aws s3 cp $(KEYCLOAK_DIST) s3://$(PROJECT)-artifacts/keycloak/keycloak.tar.gz \
+		|| echo "SKIP: $(KEYCLOAK_DIST) not found (OK if already in S3)"
+	@test -f $(PROMETHEUS_DIST) && \
+		aws s3 cp $(PROMETHEUS_DIST) s3://$(PROJECT)-artifacts/prometheus/prometheus.tar.gz \
+		|| echo "SKIP: $(PROMETHEUS_DIST) not found (OK if already in S3)"
+	@test -f exports/realm-export.json && \
+		aws s3 cp exports/realm-export.json s3://$(PROJECT)-artifacts/keycloak/realm-export.json \
+		|| echo "SKIP: exports/realm-export.json not found"
+	@if [ -f exports/realm-export-dev-users.json ]; then \
+		aws s3 cp exports/realm-export-dev-users.json s3://$(PROJECT)-artifacts/keycloak/realm-export-dev-users.json; \
+	fi
+	@echo ""
+	@echo "=== Applying changes ==="
+	terraform apply $(TF_VARS) -var="env_active=true" -auto-approve
+	@echo ""
+	@echo "=== Done. ==="
+
 down:
-	terraform apply $(TF_VARS) -var="env_active=false" -auto-approve
+	terraform destroy $(TF_VARS) -auto-approve
 
 status:
 	@terraform output env_active
@@ -102,8 +116,7 @@ plan-down:
 	terraform plan $(TF_VARS) -var="env_active=false"
 
 # ============================================================
-# Seed — manual artifact upload (for when you need to upload
-# individual artifacts outside of make up)
+# Seed — manual artifact upload
 # ============================================================
 
 seed-artifacts:

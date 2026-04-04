@@ -9,25 +9,28 @@ dnf install -y java-21-amazon-corretto-headless postgresql16 amazon-cloudwatch-a
 useradd -r -s /bin/false keycloak || true
 mkdir -p /opt/keycloak /opt/deploy /opt/keycloak/conf
 
+# Log directory for service stdout/stderr (systemd will write here)
+mkdir -p /var/log/app
+touch /var/log/app/keycloak.log
+
 # CloudWatch agent config — ships keycloak service logs + setup script logs
 cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<CWCONFIG
 {
   "logs": {
     "logs_collected": {
-      "journald": {
-        "units": ["keycloak"],
-        "collect_list": [{
-          "unit": "keycloak",
-          "log_group_name": "/eggtive-spm/${environment}/keycloak",
-          "log_stream_name": "{instance_id}"
-        }]
-      },
       "files": {
-        "collect_list": [{
-          "file_path": "/var/log/cloud-init-output.log",
-          "log_group_name": "/eggtive-spm/${environment}/userdata",
-          "log_stream_name": "keycloak-{instance_id}"
-        }]
+        "collect_list": [
+          {
+            "file_path": "/var/log/app/keycloak.log",
+            "log_group_name": "/eggtive-spm/${environment}/keycloak",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/cloud-init-output.log",
+            "log_group_name": "/eggtive-spm/${environment}/userdata",
+            "log_stream_name": "keycloak-{instance_id}"
+          }
+        ]
       }
     }
   }
@@ -189,6 +192,8 @@ ExecStart=!/opt/keycloak/bin/kc.sh start --health-enabled=true --metrics-enabled
 User=keycloak
 Environment=KEYCLOAK_ADMIN=admin
 Environment=KEYCLOAK_ADMIN_PASSWORD=changeme
+StandardOutput=append:/var/log/app/keycloak.log
+StandardError=append:/var/log/app/keycloak.log
 Restart=always
 RestartSec=30
 StartLimitIntervalSec=0

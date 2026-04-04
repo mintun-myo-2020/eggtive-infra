@@ -13,7 +13,7 @@ resource "aws_cloudwatch_log_group" "services" {
 
   name              = each.value
   retention_in_days = 1
-  log_group_class   = "INFREQUENT_ACCESS"
+  log_group_class   = "STANDARD"
 
   tags = { Name = each.value }
 }
