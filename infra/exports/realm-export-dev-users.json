@@ -1,0 +1,85 @@
+{
+  "realm": "spm",
+  "users": [
+    {
+      "username": "admin@spm.local",
+      "email": "admin@spm.local",
+      "firstName": "System",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["ADMIN"]
+    },
+    {
+      "username": "teacher1@spm.local",
+      "email": "teacher1@spm.local",
+      "firstName": "Sarah",
+      "lastName": "Lim",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "teacher1", "temporary": false }],
+      "realmRoles": ["TEACHER"]
+    },
+    {
+      "username": "teacher2@spm.local",
+      "email": "teacher2@spm.local",
+      "firstName": "James",
+      "lastName": "Tan",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "teacher2", "temporary": false }],
+      "realmRoles": ["TEACHER"]
+    },
+    {
+      "username": "parent1@spm.local",
+      "email": "parent1@spm.local",
+      "firstName": "David",
+      "lastName": "Wong",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "parent1", "temporary": false }],
+      "realmRoles": ["PARENT"]
+    },
+    {
+      "username": "parent2@spm.local",
+      "email": "parent2@spm.local",
+      "firstName": "Linda",
+      "lastName": "Chen",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "parent2", "temporary": false }],
+      "realmRoles": ["PARENT"]
+    },
+    {
+      "username": "student1@spm.local",
+      "email": "student1@spm.local",
+      "firstName": "Alice",
+      "lastName": "Tan",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "student1", "temporary": false }],
+      "realmRoles": ["STUDENT"]
+    },
+    {
+      "username": "student2@spm.local",
+      "email": "student2@spm.local",
+      "firstName": "Ben",
+      "lastName": "Lee",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "student2", "temporary": false }],
+      "realmRoles": ["STUDENT"]
+    },
+    {
+      "username": "student3@spm.local",
+      "email": "student3@spm.local",
+      "firstName": "Charlie",
+      "lastName": "Ng",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "student3", "temporary": false }],
+      "realmRoles": ["STUDENT"]
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "ap-southeast-1"
+}
+
+variable "project_name" {
+  description = "Project name used for resource naming"
+  type        = string
+  default     = "eggtive-spm"
+}
+
+variable "environment" {
+  description = "Environment name (dev, prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "env_active" {
+  description = "Whether expensive resources (EC2, RDS, ALB, VPC endpoints) are active"
+  type        = bool
+  default     = false
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "private_subnet_cidrs" {
+  description = "CIDR blocks for private subnets"
+  type        = list(string)
+  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+}
+
+variable "availability_zones" {
+  description = "Availability zones"
+  type        = list(string)
+  default     = ["ap-southeast-1a", "ap-southeast-1b"]
+}
+
+variable "backend_instance_type" {
+  description = "EC2 instance type for backend"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "keycloak_instance_type" {
+  description = "EC2 instance type for keycloak"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "prometheus_instance_type" {
+  description = "EC2 instance type for prometheus"
+  type        = string
+  default     = "t3.small"
+}
+
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_name" {
+  description = "Application database name"
+  type        = string
+  default     = "appdb"
+}
+
+variable "keycloak_db_name" {
+  description = "Keycloak database name"
+  type        = string
+  default     = "keycloakdb"
+}
+
+variable "db_username" {
+  description = "Master DB username"
+  type        = string
+  default     = "dbadmin"
+  sensitive   = true
+}
+
+variable "domain_name" {
+  description = "Internal domain name for Route 53 private hosted zone"
+  type        = string
+  default     = "internal.dev.eggtive-spm"
+}
+
+variable "custom_domain" {
+  description = "Custom domain for CloudFront (e.g. dev.spm.eggtive.com, acme.spm.eggtive.com)"
+  type        = string
+}
+
+variable "root_domain" {
+  description = "Root domain for Route 53 zone lookup (e.g. eggtive.com)"
+  type        = string
+  default     = "eggtive.com"
+}
+
+variable "github_org" {
+  description = "GitHub organization or username"
+  type        = string
+}
+
+variable "github_repo" {
+  description = "GitHub repository name (app repo that runs CI/CD)"
+  type        = string
+}
