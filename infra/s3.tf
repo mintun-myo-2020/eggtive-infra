@@ -35,6 +35,19 @@ resource "aws_s3_object" "maintenance_auth" {
   content_type = "application/json"
 }
 
+# Runtime config for frontend SPA — fetched on app load instead of build-time env vars
+resource "aws_s3_object" "frontend_config" {
+  bucket       = aws_s3_bucket.frontend.id
+  key          = "config.json"
+  content_type = "application/json"
+  content = jsonencode({
+    apiBaseUrl   = "https://${var.custom_domain}/api"
+    keycloakUrl  = "https://${var.custom_domain}/auth"
+    keycloakRealm    = "spm"
+    keycloakClientId = "spm-frontend"
+  })
+}
+
 # --- Artifacts bucket (shared, always on) ---
 resource "aws_s3_bucket" "artifacts" {
   bucket        = "${var.project_name}-artifacts"
