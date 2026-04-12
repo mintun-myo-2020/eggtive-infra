@@ -36,6 +36,26 @@ resource "aws_iam_role_policy" "ec2_s3_read" {
   })
 }
 
+# S3 read/write for reports bucket
+resource "aws_iam_role_policy" "ec2_s3_reports" {
+  name = "${var.project_name}-${var.environment}-ec2-s3-reports"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+      Resource = [
+        aws_s3_bucket.reports.arn,
+        "${aws_s3_bucket.reports.arn}/*",
+        aws_s3_bucket.uploads.arn,
+        "${aws_s3_bucket.uploads.arn}/*"
+      ]
+    }]
+  })
+}
+
 # SSM Parameter Store read for secrets
 resource "aws_iam_role_policy" "ec2_ssm_params" {
   name = "${var.project_name}-${var.environment}-ec2-ssm-params"
@@ -87,7 +107,10 @@ resource "aws_iam_role_policy" "ec2_bedrock" {
         "bedrock:InvokeModel",
         "bedrock:InvokeModelWithResponseStream"
       ]
-      Resource = "arn:aws:bedrock:*::foundation-model/*"
+      Resource = [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/*"
+      ]
     }]
   })
 }
@@ -181,6 +204,24 @@ resource "aws_iam_role_policy" "github_ssm_deploy" {
         "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
         "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
       ]
+    }]
+  })
+}
+
+# SSM: read CI/CD parameters (bucket names, CloudFront distribution ID)
+resource "aws_iam_role_policy" "github_ssm_params" {
+  name = "${var.project_name}-${var.environment}-github-ssm-params"
+  role = aws_iam_role.github_actions.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ]
+      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/cicd/*"
     }]
   })
 }

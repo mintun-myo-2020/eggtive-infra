@@ -27,3 +27,23 @@ resource "aws_ssm_parameter" "keycloak_client_secret" {
   type  = "SecureString"
   value = random_password.keycloak_client_secret.result
 }
+
+# --- CI/CD parameters (read by GitHub Actions at runtime) ---
+
+resource "aws_ssm_parameter" "cicd_frontend_bucket" {
+  name  = "/${var.project_name}/${var.environment}/cicd/frontend-bucket"
+  type  = "String"
+  value = aws_s3_bucket.frontend.id
+}
+
+resource "aws_ssm_parameter" "cicd_artifacts_bucket" {
+  name  = "/${var.project_name}/${var.environment}/cicd/artifacts-bucket"
+  type  = "String"
+  value = aws_s3_bucket.artifacts.id
+}
+
+resource "aws_ssm_parameter" "cicd_cloudfront_distribution_id" {
+  name  = "/${var.project_name}/${var.environment}/cicd/cloudfront-distribution-id"
+  type  = "String"
+  value = aws_cloudfront_distribution.main.id
+}

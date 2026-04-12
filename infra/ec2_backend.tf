@@ -15,6 +15,9 @@ resource "aws_instance" "backend" {
     aws_region         = var.aws_region
     custom_domain      = var.custom_domain
     environment        = var.environment
+    reports_bucket     = aws_s3_bucket.reports.id
+    uploads_bucket     = aws_s3_bucket.uploads.id
+    storage_type       = "s3"
   }))
 
   root_block_device {

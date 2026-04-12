@@ -41,11 +41,45 @@ resource "aws_s3_object" "frontend_config" {
   key          = "config.json"
   content_type = "application/json"
   content = jsonencode({
-    apiBaseUrl   = "https://${var.custom_domain}/api"
+    apiBaseUrl   = "https://${var.custom_domain}/api/v1"
     keycloakUrl  = "https://${var.custom_domain}/auth"
     keycloakRealm    = "spm"
     keycloakClientId = "spm-frontend"
   })
+}
+
+# --- Uploads bucket (per env, always on) ---
+resource "aws_s3_bucket" "uploads" {
+  bucket        = "${var.project_name}-${var.environment}-uploads"
+  force_destroy = var.environment == "dev"
+
+  tags = { Name = "${var.project_name}-${var.environment}-uploads" }
+}
+
+resource "aws_s3_bucket_public_access_block" "uploads" {
+  bucket = aws_s3_bucket.uploads.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# --- Reports bucket (per env, always on) ---
+resource "aws_s3_bucket" "reports" {
+  bucket        = "${var.project_name}-${var.environment}-reports"
+  force_destroy = var.environment == "dev"
+
+  tags = { Name = "${var.project_name}-${var.environment}-reports" }
+}
+
+resource "aws_s3_bucket_public_access_block" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 # --- Artifacts bucket (shared, always on) ---

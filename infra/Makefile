@@ -60,7 +60,14 @@ init:
 # ============================================================
 
 up:
-	@echo "=== Phase 1: Base infrastructure (S3, VPC, CloudFront, IAM) ==="
+	@echo "=== Phase 1a: Detach ALB from CloudFront (if previously active) ==="
+	-terraform apply $(TF_VARS) -var="env_active=false" \
+		-target=aws_cloudfront_distribution.main -auto-approve
+	@echo ""
+	@echo "=== Waiting for CloudFront distribution to deploy ==="
+	-aws cloudfront wait distribution-deployed --id $$(terraform output -raw cloudfront_distribution_id) --region us-east-1
+	@echo ""
+	@echo "=== Phase 1b: Base infrastructure (S3, VPC, CloudFront, IAM) ==="
 	terraform apply $(TF_VARS) -var="env_active=false" -auto-approve
 	@echo ""
 	@echo "=== Phase 2: Upload infra artifacts to S3 ==="
@@ -98,12 +105,32 @@ update:
 		aws s3 cp exports/realm-export-dev-users.json s3://$(PROJECT)-artifacts/keycloak/realm-export-dev-users.json; \
 	fi
 	@echo ""
+	@echo "=== Importing pre-existing log groups (if any) ==="
+	-terraform import $(TF_VARS) -var="env_active=true" 'aws_cloudwatch_log_group.services["/$(PROJECT)/$(ENV)/backend"]' /$(PROJECT)/$(ENV)/backend
+	-terraform import $(TF_VARS) -var="env_active=true" 'aws_cloudwatch_log_group.services["/$(PROJECT)/$(ENV)/keycloak"]' /$(PROJECT)/$(ENV)/keycloak
+	-terraform import $(TF_VARS) -var="env_active=true" 'aws_cloudwatch_log_group.services["/$(PROJECT)/$(ENV)/prometheus"]' /$(PROJECT)/$(ENV)/prometheus
+	-terraform import $(TF_VARS) -var="env_active=true" 'aws_cloudwatch_log_group.services["/$(PROJECT)/$(ENV)/userdata"]' /$(PROJECT)/$(ENV)/userdata
+	@echo ""
 	@echo "=== Applying changes ==="
 	terraform apply $(TF_VARS) -var="env_active=true" -auto-approve
 	@echo ""
 	@echo "=== Done. ==="
 
 down:
+	@echo "=== Phase 1: Detach ALB from CloudFront ==="
+	terraform apply $(TF_VARS) -var="env_active=false" \
+		-target=aws_cloudfront_distribution.main -auto-approve
+	@echo ""
+	@echo "=== Waiting for CloudFront distribution to deploy ==="
+	aws cloudfront wait distribution-deployed --id $$(terraform output -raw cloudfront_distribution_id) --region us-east-1
+	@echo ""
+	@echo "=== Phase 2: Destroy compute resources ==="
+	terraform apply $(TF_VARS) -var="env_active=false" -auto-approve
+	@echo ""
+	@echo "=== Done. Compute is down, data (S3/SSM/CloudFront) preserved. ==="
+
+destroy:
+	@echo "=== WARNING: This will destroy ALL resources including S3 and data ==="
 	terraform destroy $(TF_VARS) -auto-approve
 
 status:

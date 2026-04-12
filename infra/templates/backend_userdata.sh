@@ -105,6 +105,11 @@ APP_LLM_TYPE=bedrock
 APP_LLM_BEDROCK_MODEL_ID=global.amazon.nova-2-lite-v1:0
 APP_LLM_BEDROCK_MODEL_ADAPTER=nova
 APP_LLM_BEDROCK_REGION=${aws_region}
+
+# --- Storage ---
+APP_STORAGE_TYPE=${storage_type}
+APP_STORAGE_S3_BUCKET=${uploads_bucket}
+APP_REPORT_STORAGE_S3_BUCKET=${reports_bucket}
 EOF
 
 chmod 600 /opt/app/backend.env
