@@ -41,8 +41,8 @@ resource "aws_s3_object" "frontend_config" {
   key          = "config.json"
   content_type = "application/json"
   content = jsonencode({
-    apiBaseUrl   = "https://${var.custom_domain}/api/v1"
-    keycloakUrl  = "https://${var.custom_domain}/auth"
+    apiBaseUrl       = "https://${var.custom_domain}/api/v1"
+    keycloakUrl      = "https://${var.custom_domain}/auth"
     keycloakRealm    = "spm"
     keycloakClientId = "spm-frontend"
   })

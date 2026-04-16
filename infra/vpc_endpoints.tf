@@ -12,11 +12,11 @@ resource "aws_vpc_endpoint" "s3" {
 # Interface endpoints — on-demand (only when env_active)
 locals {
   interface_endpoints = {
-    ssm              = "com.amazonaws.${var.aws_region}.ssm"
-    ssmmessages      = "com.amazonaws.${var.aws_region}.ssmmessages"
-    ec2messages      = "com.amazonaws.${var.aws_region}.ec2messages"
-    logs             = "com.amazonaws.${var.aws_region}.logs"
-    bedrock-runtime  = "com.amazonaws.${var.aws_region}.bedrock-runtime"
+    ssm             = "com.amazonaws.${var.aws_region}.ssm"
+    ssmmessages     = "com.amazonaws.${var.aws_region}.ssmmessages"
+    ec2messages     = "com.amazonaws.${var.aws_region}.ec2messages"
+    logs            = "com.amazonaws.${var.aws_region}.logs"
+    bedrock-runtime = "com.amazonaws.${var.aws_region}.bedrock-runtime"
   }
 }
 
