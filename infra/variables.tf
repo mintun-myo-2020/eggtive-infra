@@ -43,19 +43,19 @@ variable "availability_zones" {
 variable "backend_instance_type" {
   description = "EC2 instance type for backend"
   type        = string
-  default     = "t3.small"
+  default     = "t3.nano"
 }
 
 variable "keycloak_instance_type" {
   description = "EC2 instance type for keycloak"
   type        = string
-  default     = "t3.small"
+  default     = "t3.nano"
 }
 
 variable "prometheus_instance_type" {
   description = "EC2 instance type for prometheus"
   type        = string
-  default     = "t3.small"
+  default     = "t3.nano"
 }
 
 

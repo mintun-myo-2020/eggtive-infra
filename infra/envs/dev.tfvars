@@ -2,8 +2,8 @@ environment            = "dev"
 custom_domain          = "dev.spm.eggtive.com"
 vpc_cidr               = "10.0.0.0/16"
 private_subnet_cidrs   = ["10.0.1.0/24", "10.0.2.0/24"]
-backend_instance_type  = "t3.small"
-keycloak_instance_type = "t3.small"
+backend_instance_type  = "t3.nano"
+keycloak_instance_type = "t3.nano"
 db_instance_class      = "db.t3.micro"
 domain_name            = "internal.dev.eggtive-spm"
 
