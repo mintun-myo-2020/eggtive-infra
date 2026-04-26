@@ -13,6 +13,7 @@ resource "aws_instance" "keycloak" {
     aws_region         = var.aws_region
     environment        = var.environment
     custom_domain      = var.custom_domain
+    root_domain        = var.root_domain
   }))
 
   root_block_device {
@@ -32,6 +33,8 @@ resource "aws_instance" "keycloak" {
     aws_ssm_parameter.keycloak_db_url,
     aws_ssm_parameter.keycloak_db_username,
     aws_ssm_parameter.keycloak_db_password,
+    aws_ssm_parameter.ses_smtp_username,
+    aws_ssm_parameter.ses_smtp_secret,
     aws_vpc_endpoint.interface,
   ]
 }

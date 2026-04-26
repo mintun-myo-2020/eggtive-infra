@@ -170,6 +170,24 @@ else
   echo "WARNING: spm-backend client not found"
 fi
 
+# --- Configure SMTP for password reset emails ---
+echo "Configuring SMTP for spm realm..."
+SMTP_USER=\$(aws ssm get-parameter --name "${ssm_prefix}/ses/smtp-username" --with-decryption --query 'Parameter.Value' --output text --region ${aws_region})
+SMTP_PASSWORD=\$(aws ssm get-parameter --name "${ssm_prefix}/ses/smtp-secret" --with-decryption --query 'Parameter.Value' --output text --region ${aws_region})
+"\$KC_HOME/bin/kcadm.sh" update realms/spm -s "smtpServer.host=email-smtp.${aws_region}.amazonaws.com" \
+  -s 'smtpServer.port=587' \
+  -s 'smtpServer.starttls=true' \
+  -s 'smtpServer.auth=true' \
+  -s "smtpServer.user=\$SMTP_USER" \
+  -s "smtpServer.password=\$SMTP_PASSWORD" \
+  -s 'smtpServer.from=noreply@${root_domain}' \
+  -s 'smtpServer.fromDisplayName=SPM' \
+  2>/dev/null && echo "SMTP configured" || echo "WARNING: SMTP config failed"
+
+# --- Enable forgot password on login page ---
+"\$KC_HOME/bin/kcadm.sh" update realms/spm -s 'resetPasswordAllowed=true' \
+  2>/dev/null && echo "Forgot password enabled" || echo "WARNING: Forgot password config failed"
+
 kill \$KC_PID 2>/dev/null || true
 wait \$KC_PID 2>/dev/null || true
 touch /opt/deploy/kc-bootstrap-done

@@ -62,6 +62,12 @@ init:
 # ============================================================
 
 up:
+	@if terraform state show 'aws_instance.backend[0]' > /dev/null 2>&1 \
+		|| terraform state show 'aws_db_instance.main[0]' > /dev/null 2>&1 \
+		|| terraform state show 'aws_lb.main[0]' > /dev/null 2>&1; then \
+		echo "ERROR: Environment is already up (or partially up). Use 'make update' for changes."; \
+		exit 1; \
+	fi
 	@echo "=== Phase 1: Base infrastructure (S3, VPC, CloudFront, IAM) ==="
 	terraform apply $(TF_VARS) -var="env_active=false" -auto-approve
 	@echo ""
@@ -245,6 +251,13 @@ taint-prometheus:
 	terraform taint 'aws_instance.prometheus[0]'
 
 taint-all: taint-backend taint-keycloak taint-prometheus
+
+# ============================================================
+# Secrets — retrieve credentials
+# ============================================================
+
+keycloak-password:
+	@aws ssm get-parameter --name "/$(PROJECT)/$(ENV)/keycloak/admin/password" --with-decryption --query 'Parameter.Value' --output text --region $(REGION)
 
 # ============================================================
 # SSM — shell into instances

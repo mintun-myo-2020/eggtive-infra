@@ -45,6 +45,7 @@ resource "aws_s3_object" "frontend_config" {
     keycloakUrl      = "https://${var.custom_domain}/auth"
     keycloakRealm    = "spm"
     keycloakClientId = "spm-frontend"
+    tenantName       = var.tenant_name
   })
 }
 

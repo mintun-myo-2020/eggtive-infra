@@ -49,7 +49,7 @@ variable "backend_instance_type" {
 variable "keycloak_instance_type" {
   description = "EC2 instance type for keycloak"
   type        = string
-  default     = "t3.nano"
+  default     = "t3.small"
 }
 
 variable "prometheus_instance_type" {
@@ -109,4 +109,10 @@ variable "github_org" {
 variable "github_repo" {
   description = "GitHub repository name (app repo that runs CI/CD)"
   type        = string
+}
+
+variable "tenant_name" {
+  description = "Display name for the tenant (shown in frontend UI)"
+  type        = string
+  default     = "SPM"
 }

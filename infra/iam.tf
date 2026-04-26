@@ -94,6 +94,57 @@ resource "aws_iam_role_policy" "ec2_cloudwatch" {
   })
 }
 
+# SES access for sending emails (Keycloak password reset, etc.)
+resource "aws_iam_role_policy" "ec2_ses" {
+  name = "${var.project_name}-${var.environment}-ec2-ses"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource = "arn:aws:ses:${var.aws_region}:*:identity/${var.root_domain}"
+    }]
+  })
+}
+
+# SES SMTP credentials (per-env IAM user for Keycloak SMTP)
+resource "aws_iam_user" "ses_smtp" {
+  name = "${var.project_name}-${var.environment}-ses-smtp"
+  tags = { Name = "${var.project_name}-${var.environment}-ses-smtp" }
+}
+
+resource "aws_iam_user_policy" "ses_smtp" {
+  name = "ses-send"
+  user = aws_iam_user.ses_smtp.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ses:SendRawEmail"]
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_iam_access_key" "ses_smtp" {
+  user = aws_iam_user.ses_smtp.name
+}
+
+resource "aws_ssm_parameter" "ses_smtp_username" {
+  name  = "/${var.project_name}/${var.environment}/ses/smtp-username"
+  type  = "SecureString"
+  value = aws_iam_access_key.ses_smtp.id
+}
+
+resource "aws_ssm_parameter" "ses_smtp_secret" {
+  name  = "/${var.project_name}/${var.environment}/ses/smtp-secret"
+  type  = "SecureString"
+  value = aws_iam_access_key.ses_smtp.secret
+}
+
 # Bedrock access for backend (extraction + LLM)
 resource "aws_iam_role_policy" "ec2_bedrock" {
   name = "${var.project_name}-${var.environment}-ec2-bedrock"

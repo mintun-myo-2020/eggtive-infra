@@ -17,6 +17,7 @@ locals {
     ec2messages     = "com.amazonaws.${var.aws_region}.ec2messages"
     logs            = "com.amazonaws.${var.aws_region}.logs"
     bedrock-runtime = "com.amazonaws.${var.aws_region}.bedrock-runtime"
+    email-smtp      = "com.amazonaws.${var.aws_region}.email-smtp"
   }
 }
 

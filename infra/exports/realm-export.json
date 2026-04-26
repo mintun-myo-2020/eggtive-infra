@@ -70,5 +70,14 @@
     }
   ],
 
-  "users": []
+  "users": [
+    {
+      "username": "service-account-spm-backend",
+      "enabled": true,
+      "serviceAccountClientId": "spm-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-realm", "query-users"]
+      }
+    }
+  ]
 }

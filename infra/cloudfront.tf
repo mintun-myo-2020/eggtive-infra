@@ -49,6 +49,19 @@ resource "aws_cloudfront_vpc_origin" "alb" {
   depends_on = [aws_internet_gateway.main]
 }
 
+# --- Response headers policy for API — prevent browser/CDN caching ---
+resource "aws_cloudfront_response_headers_policy" "api_no_cache" {
+  name = "${var.project_name}-${var.environment}-api-no-cache"
+
+  custom_headers_config {
+    items {
+      header   = "Cache-Control"
+      value    = "no-store, no-cache, must-revalidate"
+      override = true
+    }
+  }
+}
+
 # --- CloudFront Distribution ---
 resource "aws_cloudfront_distribution" "main" {
   enabled             = true
@@ -77,12 +90,13 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Default behavior — React SPA from S3
+  # Default behavior — React SPA from S3 (short TTL so deploys propagate fast)
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-frontend"
     viewer_protocol_policy = "redirect-to-https"
+    compress               = true
 
     forwarded_values {
       query_string = false
@@ -90,17 +104,18 @@ resource "aws_cloudfront_distribution" "main" {
     }
 
     min_ttl     = 0
-    default_ttl = 86400
-    max_ttl     = 31536000
+    default_ttl = 300
+    max_ttl     = 3600
   }
 
   # /api/* behavior — ALB when active, S3 maintenance when down
   ordered_cache_behavior {
-    path_pattern           = "/api/*"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = var.env_active ? "alb-backend" : "s3-frontend"
-    viewer_protocol_policy = "redirect-to-https"
+    path_pattern                = "/api/*"
+    allowed_methods             = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods              = ["GET", "HEAD"]
+    target_origin_id            = var.env_active ? "alb-backend" : "s3-frontend"
+    viewer_protocol_policy      = "redirect-to-https"
+    response_headers_policy_id  = aws_cloudfront_response_headers_policy.api_no_cache.id
 
     forwarded_values {
       query_string = true
@@ -115,11 +130,12 @@ resource "aws_cloudfront_distribution" "main" {
 
   # /auth/* behavior — ALB when active, S3 maintenance when down
   ordered_cache_behavior {
-    path_pattern           = "/auth/*"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = var.env_active ? "alb-backend" : "s3-frontend"
-    viewer_protocol_policy = "redirect-to-https"
+    path_pattern                = "/auth/*"
+    allowed_methods             = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods              = ["GET", "HEAD"]
+    target_origin_id            = var.env_active ? "alb-backend" : "s3-frontend"
+    viewer_protocol_policy      = "redirect-to-https"
+    response_headers_policy_id  = aws_cloudfront_response_headers_policy.api_no_cache.id
 
     forwarded_values {
       query_string = true
