@@ -27,6 +27,8 @@ resource "aws_instance" "keycloak" {
     Name        = "${var.project_name}-${var.environment}-keycloak"
     Service     = "keycloak"
     Environment = var.environment
+    MetricsPort = "9000"
+    MetricsPath = "/auth/metrics"
   }
 
   depends_on = [

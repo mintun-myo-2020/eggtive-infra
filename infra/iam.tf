@@ -110,6 +110,23 @@ resource "aws_iam_role_policy" "ec2_cloudwatch" {
   })
 }
 
+# EC2 describe for Prometheus service discovery
+resource "aws_iam_role_policy" "ec2_describe" {
+  name = "${var.project_name}-${var.environment}-ec2-describe"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ec2:DescribeInstances"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
 # SES access for sending emails (Keycloak password reset, etc.)
 resource "aws_iam_role_policy" "ec2_ses" {
   name = "${var.project_name}-${var.environment}-ec2-ses"

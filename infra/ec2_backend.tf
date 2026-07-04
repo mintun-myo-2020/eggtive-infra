@@ -31,6 +31,8 @@ resource "aws_instance" "backend" {
     Name        = "${var.project_name}-${var.environment}-backend"
     Service     = "backend"
     Environment = var.environment
+    MetricsPort = "8080"
+    MetricsPath = "/actuator/prometheus"
   }
 
   depends_on = [

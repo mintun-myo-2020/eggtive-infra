@@ -50,15 +50,29 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: backend
-    metrics_path: /actuator/prometheus
-    static_configs:
-      - targets: ['backend.${domain_name}:8080']
-
-  - job_name: keycloak
-    metrics_path: /auth/metrics
-    static_configs:
-      - targets: ['keycloak.${domain_name}:9000']
+  - job_name: ec2-apps
+    ec2_sd_configs:
+      - region: ${aws_region}
+        port: 8080
+        filters:
+          - name: tag:Environment
+            values: ['${environment}']
+          - name: tag:MetricsPort
+            values: ['*']
+    relabel_configs:
+      # Use the Service tag as the job label
+      - source_labels: [__meta_ec2_tag_Service]
+        target_label: service
+      # Set the metrics path from tag
+      - source_labels: [__meta_ec2_tag_MetricsPath]
+        target_label: __metrics_path__
+      # Set the port from tag
+      - source_labels: [__meta_ec2_private_ip, __meta_ec2_tag_MetricsPort]
+        separator: ':'
+        target_label: __address__
+      # Keep instance name for dashboards
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: instance_name
 EOF
 
 chown -R prometheus:prometheus /opt/prometheus
