@@ -84,3 +84,9 @@ output "alb_dns" {
   description = "Internal ALB DNS"
   value       = var.env_active ? aws_lb.main[0].dns_name : "inactive"
 }
+
+# --- Generic App Workloads ---
+output "app_workload_instance_ids" {
+  description = "Instance IDs for generic app workloads — use for SSM session"
+  value       = { for k, v in aws_instance.app_workload : k => v.id }
+}

@@ -124,3 +124,21 @@ variable "tenant_name" {
   type        = string
   default     = "SPM"
 }
+
+variable "app_workloads" {
+  description = <<-EOT
+    Generic app instances to provision. Each gets an EC2 with auto-configured systemd service.
+    Runtime options: "java21", "java25", "go", "python3", "node20"
+    App team stores secrets in SSM under /<project_name>/<environment>/<app-name>/*
+    CI uploads artifact to s3://<artifacts-bucket>/<app-name>/<artifact>
+  EOT
+  type = map(object({
+    instance_type = string
+    runtime       = string              # java21, java25, go, python3, node20
+    artifact      = string              # filename in S3 under <app-name>/ prefix
+    port          = number              # app listen port
+    metrics_path  = optional(string, "/metrics")
+    health_path   = optional(string, "/health")
+  }))
+  default = {}
+}
