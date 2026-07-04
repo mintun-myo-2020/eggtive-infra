@@ -64,9 +64,14 @@ output "artifacts_bucket" {
 }
 
 # --- CI/CD ---
-output "github_actions_role_arn" {
-  description = "IAM role ARN for GitHub Actions OIDC — set as AWS_CICD_ROLE_ARN secret"
-  value       = aws_iam_role.github_actions.arn
+output "app_deploy_role_arns" {
+  description = "IAM role ARNs for each app's GitHub Actions deploy — set as AWS_CICD_ROLE_ARN in each app repo"
+  value       = { for k, v in aws_iam_role.app_deploy : k => v.arn }
+}
+
+output "infra_cicd_role_arn" {
+  description = "IAM role ARN for infra repo's Terraform CI/CD"
+  value       = aws_iam_role.infra_cicd.arn
 }
 
 # --- Networking ---

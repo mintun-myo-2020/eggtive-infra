@@ -82,15 +82,31 @@ resource "aws_iam_role_policy" "ec2_cloudwatch" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ]
-      Resource = "arn:aws:logs:${var.aws_region}:*:*"
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:GetMetricData",
+          "cloudwatch:GetMetricStatistics",
+          "cloudwatch:ListMetrics",
+          "cloudwatch:DescribeAlarms"
+        ]
+        Resource = "*"
+      }
+    ]
   })
 }
 
@@ -180,53 +196,75 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 data "aws_caller_identity" "current" {}
 
-resource "aws_iam_role" "github_actions" {
-  name = "${var.project_name}-${var.environment}-github-actions"
+# --- Per-app deploy roles (one per trusted app) ---
+resource "aws_iam_role" "app_deploy" {
+  for_each = var.trusted_apps
+  name     = "${var.project_name}-${var.environment}-${each.key}-deploy"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Federated = aws_iam_openid_connect_provider.github.arn
-      }
-      Action = "sts:AssumeRoleWithWebIdentity"
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
-        StringEquals = {
-          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-        }
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:*"
-        }
+        StringEquals = { "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com" }
+        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${each.value.github_repo}:*" }
       }
     }]
   })
 }
 
-# S3: frontend bucket + artifacts bucket
-resource "aws_iam_role_policy" "github_s3" {
-  name = "${var.project_name}-${var.environment}-github-s3"
-  role = aws_iam_role.github_actions.id
+# S3: artifacts — scoped to app's prefix only
+resource "aws_iam_role_policy" "app_deploy_artifacts" {
+  for_each = var.trusted_apps
+  name     = "artifacts-s3"
+  role     = aws_iam_role.app_deploy[each.key].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.artifacts.arn
+        Condition = {
+          StringLike = { "s3:prefix" = ["${each.key}/*"] }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.artifacts.arn}/${each.key}/*"
+      }
+    ]
+  })
+}
+
+# S3: frontend bucket (only apps that need frontend deploy get this)
+resource "aws_iam_role_policy" "app_deploy_frontend" {
+  for_each = var.trusted_apps
+  name     = "frontend-s3"
+  role     = aws_iam_role.app_deploy[each.key].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
       Resource = [
         aws_s3_bucket.frontend.arn,
-        "${aws_s3_bucket.frontend.arn}/*",
-        aws_s3_bucket.artifacts.arn,
-        "${aws_s3_bucket.artifacts.arn}/*"
+        "${aws_s3_bucket.frontend.arn}/*"
       ]
     }]
   })
 }
 
 # CloudFront: invalidation
-resource "aws_iam_role_policy" "github_cloudfront" {
-  name = "${var.project_name}-${var.environment}-github-cloudfront"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_role_policy" "app_deploy_cloudfront" {
+  for_each = var.trusted_apps
+  name     = "cloudfront-invalidation"
+  role     = aws_iam_role.app_deploy[each.key].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -239,18 +277,16 @@ resource "aws_iam_role_policy" "github_cloudfront" {
 }
 
 # SSM: send commands to EC2 for deploy
-resource "aws_iam_role_policy" "github_ssm_deploy" {
-  name = "${var.project_name}-${var.environment}-github-ssm-deploy"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_role_policy" "app_deploy_ssm" {
+  for_each = var.trusted_apps
+  name     = "ssm-deploy"
+  role     = aws_iam_role.app_deploy[each.key].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Action = [
-        "ssm:SendCommand",
-        "ssm:GetCommandInvocation"
-      ]
+      Action = ["ssm:SendCommand", "ssm:GetCommandInvocation"]
       Resource = [
         "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
         "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
@@ -259,35 +295,51 @@ resource "aws_iam_role_policy" "github_ssm_deploy" {
   })
 }
 
-# SSM: read CI/CD parameters (bucket names, CloudFront distribution ID)
-resource "aws_iam_role_policy" "github_ssm_params" {
-  name = "${var.project_name}-${var.environment}-github-ssm-params"
-  role = aws_iam_role.github_actions.id
+# SSM: read CI/CD parameters
+resource "aws_iam_role_policy" "app_deploy_ssm_params" {
+  for_each = var.trusted_apps
+  name     = "ssm-params"
+  role     = aws_iam_role.app_deploy[each.key].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Action = [
-        "ssm:GetParameter",
-        "ssm:GetParameters"
-      ]
+      Action = ["ssm:GetParameter", "ssm:GetParameters"]
       Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/cicd/*"
     }]
   })
 }
 
-# Terraform state access (for infra pipeline)
-resource "aws_iam_role_policy" "github_terraform" {
-  name = "${var.project_name}-${var.environment}-github-terraform"
-  role = aws_iam_role.github_actions.id
+# --- Infra repo role (for Terraform CI/CD — separate from app deploys) ---
+resource "aws_iam_role" "infra_cicd" {
+  name = "${var.project_name}-${var.environment}-infra-cicd"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = { "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com" }
+        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:*" }
+      }
+    }]
+  })
+}
+
+# Terraform state access (infra repo only)
+resource "aws_iam_role_policy" "infra_cicd_terraform" {
+  name = "terraform-state"
+  role = aws_iam_role.infra_cicd.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
         Resource = [
           "arn:aws:s3:::${var.project_name}-terraform-state",
           "arn:aws:s3:::${var.project_name}-terraform-state/*"

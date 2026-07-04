@@ -11,7 +11,14 @@ domain_name            = "internal.dev.eggtive-spm"
 #   make up   → -var="env_active=true"
 #   make down → -var="env_active=false"
 
-# GitHub OIDC — update these to match your repo
+# GitHub OIDC
 github_org  = "mintun-myo-2020"
-github_repo = "spm"
+github_repo = "spm-infra"
+
+# Trusted app repos — each gets a scoped deploy role
+trusted_apps = {
+  spm = {
+    github_repo = "spm"
+  }
+}
 tenant_name = "Eggtive SPM"

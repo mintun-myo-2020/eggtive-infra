@@ -53,9 +53,9 @@ variable "keycloak_instance_type" {
 }
 
 variable "prometheus_instance_type" {
-  description = "EC2 instance type for prometheus"
+  description = "EC2 instance type for prometheus + grafana"
   type        = string
-  default     = "t3.nano"
+  default     = "t3.micro"
 }
 
 
@@ -107,8 +107,16 @@ variable "github_org" {
 }
 
 variable "github_repo" {
-  description = "GitHub repository name (app repo that runs CI/CD)"
+  description = "GitHub repository name (infra repo, for Terraform CI/CD)"
   type        = string
+}
+
+variable "trusted_apps" {
+  description = "Map of app names to their GitHub repo. Each gets a deploy role scoped to its own S3 prefix."
+  type = map(object({
+    github_repo = string
+  }))
+  default = {}
 }
 
 variable "tenant_name" {
