@@ -1,10 +1,15 @@
 # Terraform
 infra/.terraform/
-infra/*.tfstate
-infra/*.tfstate.backup
+*.tfstate
+*.tfstate.backup
+*.tfplan
 infra/.terraform.lock.hcl
+crash.log
 
-# Distribution tarballs (large binaries — download separately)
+# Secret overrides (if any) — regular tfvars are tracked
+*.secret.tfvars
+
+# Distribution tarballs (large binaries)
 infra/dist/
 
 # OS
