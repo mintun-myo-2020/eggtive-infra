@@ -22,12 +22,12 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<CWCONF
         "collect_list": [
           {
             "file_path": "/var/log/app/keycloak.log",
-            "log_group_name": "/eggtive-spm/${environment}/keycloak",
+            "log_group_name": "/${project_name}/${environment}/keycloak",
             "log_stream_name": "{instance_id}"
           },
           {
             "file_path": "/var/log/cloud-init-output.log",
-            "log_group_name": "/eggtive-spm/${environment}/userdata",
+            "log_group_name": "/${project_name}/${environment}/userdata",
             "log_stream_name": "keycloak-{instance_id}"
           }
         ]

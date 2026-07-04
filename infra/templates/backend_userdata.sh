@@ -27,12 +27,12 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<CWCONF
         "collect_list": [
           {
             "file_path": "/var/log/app/backend.log",
-            "log_group_name": "/eggtive-spm/${environment}/backend",
+            "log_group_name": "/${project_name}/${environment}/backend",
             "log_stream_name": "{instance_id}"
           },
           {
             "file_path": "/var/log/cloud-init-output.log",
-            "log_group_name": "/eggtive-spm/${environment}/userdata",
+            "log_group_name": "/${project_name}/${environment}/userdata",
             "log_stream_name": "backend-{instance_id}"
           }
         ]

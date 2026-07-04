@@ -12,6 +12,7 @@ resource "aws_instance" "keycloak" {
     ssm_prefix         = "/${var.project_name}/${var.environment}"
     aws_region         = var.aws_region
     environment        = var.environment
+    project_name       = var.project_name
     custom_domain      = var.custom_domain
     root_domain        = var.root_domain
   }))

@@ -22,12 +22,12 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<CWCONF
         "collect_list": [
           {
             "file_path": "/var/log/app/prometheus.log",
-            "log_group_name": "/eggtive-spm/${environment}/prometheus",
+            "log_group_name": "/${project_name}/${environment}/prometheus",
             "log_stream_name": "{instance_id}"
           },
           {
             "file_path": "/var/log/cloud-init-output.log",
-            "log_group_name": "/eggtive-spm/${environment}/userdata",
+            "log_group_name": "/${project_name}/${environment}/userdata",
             "log_stream_name": "prometheus-{instance_id}"
           }
         ]
@@ -40,7 +40,7 @@ systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
 
 # Write Prometheus config (staging — setup script restores after extraction)
-cat > /opt/deploy/prometheus.yml <<'EOF'
+cat > /opt/deploy/prometheus.yml <<EOF
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -53,12 +53,12 @@ scrape_configs:
   - job_name: backend
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ['backend.internal.dev.eggtive-spm:8080']
+      - targets: ['backend.${domain_name}:8080']
 
   - job_name: keycloak
     metrics_path: /auth/metrics
     static_configs:
-      - targets: ['keycloak.internal.dev.eggtive-spm:9000']
+      - targets: ['keycloak.${domain_name}:9000']
 EOF
 
 chown -R prometheus:prometheus /opt/prometheus
