@@ -1,0 +1,70 @@
+name: 'Deploy to Platform'
+description: 'Upload artifact and deploy to EC2 via SSM'
+
+inputs:
+  app-name:
+    description: 'App name (must match app_workloads key in infra)'
+    required: true
+  artifact-path:
+    description: 'Path to built artifact (binary, jar, etc.)'
+    required: true
+  artifact-name:
+    description: 'Filename in S3 (defaults to app-name)'
+    required: false
+  environment:
+    description: 'Target environment (dev, prod)'
+    required: true
+    default: 'dev'
+  role-arn:
+    description: 'IAM role ARN for OIDC auth'
+    required: true
+  aws-region:
+    description: 'AWS region'
+    required: false
+    default: 'ap-southeast-1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-arn }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Upload artifact to S3
+      shell: bash
+      run: |
+        BUCKET=$(aws ssm get-parameter --name "/eggtive-spm/${{ inputs.environment }}/cicd/artifacts-bucket" --query 'Parameter.Value' --output text)
+        ARTIFACT_NAME="${{ inputs.artifact-name || inputs.app-name }}"
+        aws s3 cp "${{ inputs.artifact-path }}" "s3://${BUCKET}/${{ inputs.app-name }}/${ARTIFACT_NAME}"
+        echo "Uploaded to s3://${BUCKET}/${{ inputs.app-name }}/${ARTIFACT_NAME}"
+
+    - name: Deploy via SSM
+      shell: bash
+      run: |
+        COMMAND_ID=$(aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --targets "Key=tag:Service,Values=${{ inputs.app-name }}" "Key=tag:Environment,Values=${{ inputs.environment }}" \
+          --parameters 'commands=["bash /opt/deploy/deploy.sh"]' \
+          --comment "Deploy ${{ inputs.app-name }} (${{ github.sha }})" \
+          --query 'Command.CommandId' --output text)
+        echo "SSM Command: $COMMAND_ID"
+
+        # Wait for completion
+        sleep 5
+        INSTANCE_ID=$(aws ssm list-command-invocations --command-id "$COMMAND_ID" --query 'CommandInvocations[0].InstanceId' --output text)
+        for i in $(seq 1 30); do
+          STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text 2>/dev/null || echo "Pending")
+          if [ "$STATUS" = "Success" ]; then
+            echo "Deploy successful"
+            exit 0
+          elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+            echo "Deploy failed with status: $STATUS"
+            aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query 'StandardErrorContent' --output text
+            exit 1
+          fi
+          sleep 5
+        done
+        echo "Deploy timed out"
+        exit 1
