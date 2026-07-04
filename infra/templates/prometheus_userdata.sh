@@ -122,3 +122,35 @@ UNIT
 systemctl daemon-reload
 systemctl enable --now prometheus
 echo "Prometheus service enabled and starting (will retry until tarball is in S3)"
+
+# ============================================================
+# Phase 4: Grafana (runs alongside Prometheus)
+# ============================================================
+
+# Install Grafana OSS from S3 (no internet access in private subnet)
+aws s3 cp "s3://${s3_artifact_bucket}/grafana/grafana.rpm" /tmp/grafana.rpm
+dnf install -y /tmp/grafana.rpm
+rm /tmp/grafana.rpm
+
+# Provision Prometheus data source
+mkdir -p /etc/grafana/provisioning/datasources
+cat > /etc/grafana/provisioning/datasources/prometheus.yml <<'DSEOF'
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://localhost:9090
+    isDefault: true
+    editable: false
+  - name: CloudWatch
+    type: cloudwatch
+    access: proxy
+    jsonData:
+      authType: default
+      defaultRegion: ${aws_region}
+    editable: false
+DSEOF
+
+systemctl enable --now grafana-server
+echo "Grafana enabled and starting on port 3000"

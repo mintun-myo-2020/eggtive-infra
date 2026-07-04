@@ -141,15 +141,23 @@ resource "aws_security_group" "keycloak" {
 resource "aws_security_group" "prometheus" {
   count       = var.env_active ? 1 : 0
   name_prefix = "${var.project_name}-${var.environment}-prometheus-"
-  description = "Prometheus EC2"
+  description = "Prometheus + Grafana EC2"
 
   vpc_id = aws_vpc.main.id
 
   ingress {
-    description = "Allow access from VPC CIDR"
+    description = "Prometheus UI from VPC"
     protocol    = "tcp"
     from_port   = 9090
     to_port     = 9090
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    description = "Grafana UI from VPC"
+    protocol    = "tcp"
+    from_port   = 3000
+    to_port     = 3000
     cidr_blocks = [var.vpc_cidr]
   }
 

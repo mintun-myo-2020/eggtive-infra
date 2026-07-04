@@ -14,6 +14,7 @@ PROJECT := eggtive-spm
 # --- Local dist files (downloaded once, gitignored) ---
 KEYCLOAK_DIST := dist/keycloak-26.1.0.tar.gz
 PROMETHEUS_DIST := dist/prometheus-3.5.1.linux-amd64.tar.gz
+GRAFANA_DIST := dist/grafana.rpm
 
 # --- App build artifacts (from the app repo, optional) ---
 BACKEND_JAR := ../backend/build/libs/backend.jar
@@ -78,6 +79,9 @@ up:
 	@test -f $(PROMETHEUS_DIST) && \
 		aws s3 cp $(PROMETHEUS_DIST) s3://$(PROJECT)-artifacts/prometheus/prometheus.tar.gz \
 		|| (echo "ERROR: $(PROMETHEUS_DIST) not found. Download it first." && exit 1)
+	@test -f $(GRAFANA_DIST) && \
+		aws s3 cp $(GRAFANA_DIST) s3://$(PROJECT)-artifacts/grafana/grafana.rpm \
+		|| (echo "ERROR: $(GRAFANA_DIST) not found. Download it first." && exit 1)
 	@test -f exports/realm-export.json && \
 		aws s3 cp exports/realm-export.json s3://$(PROJECT)-artifacts/keycloak/realm-export.json \
 		|| echo "SKIP: exports/realm-export.json not found"
@@ -99,6 +103,9 @@ update:
 	@test -f $(PROMETHEUS_DIST) && \
 		aws s3 cp $(PROMETHEUS_DIST) s3://$(PROJECT)-artifacts/prometheus/prometheus.tar.gz \
 		|| echo "SKIP: $(PROMETHEUS_DIST) not found (OK if already in S3)"
+	@test -f $(GRAFANA_DIST) && \
+		aws s3 cp $(GRAFANA_DIST) s3://$(PROJECT)-artifacts/grafana/grafana.rpm \
+		|| echo "SKIP: $(GRAFANA_DIST) not found (OK if already in S3)"
 	@test -f exports/realm-export.json && \
 		aws s3 cp exports/realm-export.json s3://$(PROJECT)-artifacts/keycloak/realm-export.json \
 		|| echo "SKIP: exports/realm-export.json not found"
@@ -201,6 +208,9 @@ seed-artifacts:
 	@echo "Uploading Prometheus tarball..."
 	@test -f $(PROMETHEUS_DIST) || (echo "ERROR: $(PROMETHEUS_DIST) not found." && exit 1)
 	aws s3 cp $(PROMETHEUS_DIST) s3://$(PROJECT)-artifacts/prometheus/prometheus.tar.gz
+	@echo "Uploading Grafana RPM..."
+	@test -f $(GRAFANA_DIST) || (echo "ERROR: $(GRAFANA_DIST) not found." && exit 1)
+	aws s3 cp $(GRAFANA_DIST) s3://$(PROJECT)-artifacts/grafana/grafana.rpm
 
 seed-realm:
 	@echo "Uploading Keycloak realm exports..."
@@ -282,3 +292,10 @@ prometheus-ui:
 		--target $$(terraform output -raw prometheus_instance_id) \
 		--document-name AWS-StartPortForwardingSession \
 		--parameters '{"portNumber":["9090"],"localPortNumber":["9090"]}'
+
+grafana-ui:
+	@echo "Opening Grafana at http://localhost:3000 (default login: admin/admin)"
+	aws ssm start-session \
+		--target $$(terraform output -raw prometheus_instance_id) \
+		--document-name AWS-StartPortForwardingSession \
+		--parameters '{"portNumber":["3000"],"localPortNumber":["3000"]}'
