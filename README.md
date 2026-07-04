@@ -6,7 +6,9 @@ App teams deploy through their own GitHub Actions pipelines — this repo contro
 
 ## Onboarding a New App
 
-1. Open a PR adding your app to `infra/envs/dev.tfvars`:
+### Step 1: CI/CD Access
+
+Open a PR adding your app to `trusted_apps` in `infra/envs/dev.tfvars`:
 
 ```hcl
 trusted_apps = {
@@ -15,51 +17,146 @@ trusted_apps = {
 }
 ```
 
-2. CI runs `terraform plan` — the PR comment shows the new IAM role being created.
+This creates an IAM role scoped to your GitHub repo with:
+- S3 artifacts access under `s3://<artifacts-bucket>/<app-name>/*`
+- S3 frontend bucket access
+- CloudFront cache invalidation
+- SSM SendCommand for EC2 deploys
+- SSM parameter read for CI/CD config
 
-3. Infra owner reviews and merges.
+### Step 2: Compute (optional)
 
-4. CI applies. Your app gets:
-   - An IAM role scoped to your GitHub repo (OIDC, no long-lived credentials)
-   - S3 artifacts access under `s3://<artifacts-bucket>/<app-name>/*`
-   - S3 frontend bucket access
-   - CloudFront cache invalidation
-   - SSM SendCommand for EC2 deploys
-   - SSM parameter read for CI/CD config
+If your app needs an EC2 instance, add it to `app_workloads`:
 
-5. Get your role ARN from Terraform output:
-   ```
-   terraform output app_deploy_role_arns
-   ```
+```hcl
+app_workloads = {
+  billing = {
+    instance_type = "t3.small"
+    runtime       = "go"            # java21, java25, go, python3, node20
+    artifact      = "billing"       # filename in S3 under <app-name>/ prefix
+    port          = 8080            # app listen port
+    # metrics_path = "/metrics"     # optional, defaults to /metrics
+    # health_path  = "/health"      # optional, defaults to /health
+  }
+}
+```
 
-6. In your app repo, configure GitHub Actions to assume the role:
-   ```yaml
-   permissions:
-     id-token: write
-     contents: read
+This creates:
+- EC2 instance with your runtime pre-installed
+- Security group allowing your port from VPC
+- CloudWatch log group at `/<project>/<env>/<app-name>`
+- Prometheus auto-discovery via instance tags (scraped automatically)
+- systemd service with auto-restart and SSM-based config
 
-   steps:
-     - uses: aws-actions/configure-aws-credentials@v4
-       with:
-         role-to-assume: <your-role-arn>
-         aws-region: ap-southeast-1
-   ```
+### Supported Runtimes
 
-7. Upload your build artifact to your S3 prefix:
-   ```
-   aws s3 cp build/app.jar s3://<artifacts-bucket>/<app-name>/app.jar
-   ```
+| Runtime | Installed | Run command |
+|---------|-----------|-------------|
+| `java21` | Amazon Corretto 21 | `java -jar /opt/app/artifact` |
+| `java25` | Amazon Corretto 25 | `java -jar /opt/app/artifact` |
+| `go` | Nothing (static binary) | `/opt/app/artifact` |
+| `python3` | Python 3 + pip | `python3 /opt/app/artifact` |
+| `node20` | Node.js 20 | `node /opt/app/artifact` |
+
+### Step 3: Configuration (optional)
+
+If your app needs runtime config (DB connections, API keys, etc.), infra owner stores them in SSM Parameter Store under:
+
+```
+/<project-name>/<environment>/<app-name>/<key>
+```
+
+Examples:
+```
+/eggtive-spm/dev/billing/db/url
+/eggtive-spm/dev/billing/db/password
+/eggtive-spm/dev/billing/api-key
+```
+
+The instance reads all params under the app's prefix at startup and converts paths to env vars:
+- `.../billing/db/url` → `DB_URL`
+- `.../billing/api-key` → `API_KEY`
+
+If no params exist under the prefix, the app starts with no injected env vars.
+
+App teams provide the values they need; infra owner stores them via:
+```bash
+aws ssm put-parameter --name "/<project>/<env>/<app>/db/url" \
+  --value "jdbc:postgresql://..." --type SecureString
+```
+
+### Step 4: Configure Your CI
+
+Set the role ARN as a secret in your app repo:
+```
+terraform output app_deploy_role_arns
+# → { "billing" = "arn:aws:iam::123456:role/eggtive-spm-dev-billing-deploy" }
+```
+
+Then your entire deploy workflow:
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: go build -o billing ./cmd/server
+
+      - name: Deploy
+        uses: mintun-myo-2020/spm-infra/.github/actions/deploy@main
+        with:
+          app-name: billing
+          artifact-path: billing
+          environment: dev
+          role-arn: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+```
+
+The reusable action handles: OIDC auth → S3 upload → SSM deploy trigger → wait for success/failure.
+
+**Inputs:**
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `app-name` | yes | Must match your `app_workloads` key |
+| `artifact-path` | yes | Path to your build output |
+| `environment` | yes | `dev` or `prod` |
+| `role-arn` | yes | From `terraform output app_deploy_role_arns` |
+| `artifact-name` | no | S3 filename (defaults to `app-name`) |
+| `aws-region` | no | Defaults to `ap-southeast-1` |
 
 ## Offboarding an App
 
-Remove the entry from `trusted_apps` and merge. The role and all its policies are destroyed on the next apply — access is revoked immediately.
+Remove the entry from `trusted_apps` (and `app_workloads` if applicable) and merge. The role, policies, EC2 instance, and security group are all destroyed on next apply. Access is revoked immediately.
+
+## Monitoring
+
+Prometheus auto-discovers all EC2 instances with `MetricsPort` and `MetricsPath` tags using EC2 service discovery. No config changes needed — just tag your instance and it gets scraped.
+
+Access dashboards:
+```
+make grafana-ui       # http://localhost:3000
+make prometheus-ui    # http://localhost:9090
+```
 
 ## Repo Structure
 
 ```
 infra/
   envs/           # Per-environment config (dev.tfvars, prod.tfvars)
-  templates/      # EC2 userdata scripts
+  templates/      # EC2 userdata scripts (app-specific + generic)
   exports/        # Keycloak realm exports
   dist/           # Local binary artifacts (gitignored, uploaded to S3)
   Makefile        # Ops toolkit (bootstrap, up/down, ssh, port-forward)
