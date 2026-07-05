@@ -13,7 +13,7 @@ domain_name            = "internal.dev.eggtive-spm"
 
 # GitHub OIDC
 github_org  = "mintun-myo-2020"
-github_repo = "spm-infra"
+github_repo = "eggtive-infra"
 
 # Trusted app repos — each gets a scoped deploy role
 trusted_apps = {
