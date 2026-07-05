@@ -14,7 +14,7 @@ PROJECT := eggtive-spm
 # --- Local dist files (downloaded once, gitignored) ---
 KEYCLOAK_DIST := dist/keycloak-26.1.0.tar.gz
 PROMETHEUS_DIST := dist/prometheus-3.5.1.linux-amd64.tar.gz
-GRAFANA_DIST := dist/grafana.rpm
+GRAFANA_DIST := dist/grafana_13.0.1_24542347077_linux_amd64.rpm
 
 # --- App build artifacts (from the app repo, optional) ---
 BACKEND_JAR := ../backend/build/libs/backend.jar
