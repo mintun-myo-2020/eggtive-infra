@@ -211,8 +211,6 @@ resource "aws_iam_openid_connect_provider" "github" {
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
-data "aws_caller_identity" "current" {}
-
 # --- Per-app deploy roles (one per trusted app) ---
 resource "aws_iam_role" "app_deploy" {
   for_each = var.trusted_apps
@@ -328,6 +326,64 @@ resource "aws_iam_role_policy" "app_deploy_ssm_params" {
   })
 }
 
+# ECR: push images (only for apps that have a container_workload)
+resource "aws_iam_role_policy" "app_deploy_ecr" {
+  for_each = { for k, v in var.trusted_apps : k => v if contains(keys(var.container_workloads), k) }
+  name     = "ecr-push"
+  role     = aws_iam_role.app_deploy[each.key].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
+        ]
+        Resource = aws_ecr_repository.app[each.key].arn
+      }
+    ]
+  })
+}
+
+# ECS: force new deployment (only for apps that have a container_workload)
+resource "aws_iam_role_policy" "app_deploy_ecs" {
+  for_each = { for k, v in var.trusted_apps : k => v if contains(keys(var.container_workloads), k) }
+  name     = "ecs-deploy"
+  role     = aws_iam_role.app_deploy[each.key].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ecs:UpdateService",
+        "ecs:DescribeServices",
+        "ecs:DescribeTaskDefinition"
+      ]
+      Resource = "*"
+      Condition = {
+        StringEquals = {
+          "ecs:cluster" = "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/${var.project_name}-${var.environment}"
+        }
+      }
+    }]
+  })
+}
+
 # --- Infra repo role (for Terraform CI/CD — separate from app deploys) ---
 resource "aws_iam_role" "infra_cicd" {
   name = "${var.project_name}-${var.environment}-infra-cicd"
@@ -366,6 +422,28 @@ resource "aws_iam_role_policy" "infra_cicd_terraform" {
         Effect   = "Allow"
         Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
         Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/terraform-locks"
+      }
+    ]
+  })
+}
+
+# Artifacts S3 access (infra repo uploads shared config like Keycloak realm exports)
+resource "aws_iam_role_policy" "infra_cicd_artifacts" {
+  name = "artifacts-s3"
+  role = aws_iam_role.infra_cicd.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.artifacts.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.artifacts.arn}/*"
       }
     ]
   })
