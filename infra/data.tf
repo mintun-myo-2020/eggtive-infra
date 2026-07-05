@@ -12,3 +12,5 @@ data "aws_ami" "al2023" {
     values = ["hvm"]
   }
 }
+
+data "aws_caller_identity" "current" {}

@@ -142,3 +142,21 @@ variable "app_workloads" {
   }))
   default = {}
 }
+
+variable "container_workloads" {
+  description = <<-EOT
+    Containerized apps running on ECS Fargate.
+    App team provides a Dockerfile in their repo. Platform handles ECR, task def, service, ALB routing.
+    CI builds the image, pushes to ECR, and triggers deployment.
+  EOT
+  type = map(object({
+    cpu           = number # Fargate CPU units: 256, 512, 1024, 2048, 4096
+    memory        = number # Fargate memory MB: 512, 1024, 2048, ...
+    port          = number # container listen port
+    desired_count = optional(number, 1)
+    health_path   = optional(string, "/health")
+    metrics_path  = optional(string, "/metrics")
+    runtime       = optional(string, "") # java21, node20, python3, go — for OTel auto-instrumentation
+  }))
+  default = {}
+}

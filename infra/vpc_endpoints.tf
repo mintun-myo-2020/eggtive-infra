@@ -19,6 +19,8 @@ locals {
     monitoring      = "com.amazonaws.${var.aws_region}.monitoring"
     bedrock-runtime = "com.amazonaws.${var.aws_region}.bedrock-runtime"
     email-smtp      = "com.amazonaws.${var.aws_region}.email-smtp"
+    ecr-api         = "com.amazonaws.${var.aws_region}.ecr.api"
+    ecr-dkr         = "com.amazonaws.${var.aws_region}.ecr.dkr"
   }
 }
 
