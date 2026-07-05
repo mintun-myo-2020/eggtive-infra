@@ -29,9 +29,23 @@ jobs:
         working-directory: infra
         run: terraform fmt -check -recursive
 
+  # ── Check which environments exist ──
+  check-envs:
+    runs-on: ubuntu-latest
+    outputs:
+      has_dev: ${{ steps.check.outputs.has_dev }}
+      has_prod: ${{ steps.check.outputs.has_prod }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: check
+        run: |
+          [ -f infra/envs/dev.tfvars ] && echo "has_dev=true" >> "$GITHUB_OUTPUT" || echo "has_dev=false" >> "$GITHUB_OUTPUT"
+          [ -f infra/envs/prod.tfvars ] && echo "has_prod=true" >> "$GITHUB_OUTPUT" || echo "has_prod=false" >> "$GITHUB_OUTPUT"
+
   # ── Plan Dev ──
   plan-dev:
-    needs: lint
+    needs: [lint, check-envs]
+    if: needs.check-envs.outputs.has_dev == 'true'
     runs-on: ubuntu-latest
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
@@ -86,7 +100,8 @@ jobs:
 
   # ── Plan Prod ──
   plan-prod:
-    needs: lint
+    needs: [lint, check-envs]
+    if: needs.check-envs.outputs.has_prod == 'true'
     runs-on: ubuntu-latest
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
