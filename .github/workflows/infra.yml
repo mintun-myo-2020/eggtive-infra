@@ -69,8 +69,15 @@ jobs:
         id: plan
         working-directory: infra
         run: |
+          set +e
           terraform plan -var-file=envs/dev.tfvars -no-color -out=tfplan 2>&1 | tee plan_output.txt
-          if grep -q "No changes" plan_output.txt; then
+          PLAN_EXIT=$?
+          set -e
+          if [ $PLAN_EXIT -ne 0 ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "Plan failed with exit code $PLAN_EXIT"
+            exit 1
+          elif grep -q "No changes" plan_output.txt; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"

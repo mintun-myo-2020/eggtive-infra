@@ -139,7 +139,75 @@ The reusable action handles: OIDC auth → S3 upload → SSM deploy trigger → 
 
 ## Offboarding an App
 
-Remove the entry from `trusted_apps` (and `app_workloads` if applicable) and merge. The role, policies, EC2 instance, and security group are all destroyed on next apply. Access is revoked immediately.
+Remove the entry from `trusted_apps` (and `app_workloads`/`container_workloads` if applicable) and merge. The role, policies, EC2/ECS resources, and security groups are all destroyed on next apply. Access is revoked immediately.
+
+## Container Workloads (ECS Fargate)
+
+For containerized apps, add to `container_workloads` instead of `app_workloads`:
+
+```hcl
+container_workloads = {
+  payments = {
+    cpu     = 256        # 0.25 vCPU
+    memory  = 512        # MB
+    port    = 8080
+    runtime = "java21"   # enables OTel auto-instrumentation
+  }
+}
+```
+
+The platform creates: ECR repo, ECS task definition, Fargate service, ALB target group + routing (`/<app-name>/*`), CloudWatch logs, security group.
+
+### Supported runtimes for auto-instrumentation
+
+| Runtime | OTel injection |
+|---------|----------------|
+| `java21` / `java25` | `JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar` |
+| `node20` | `NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register` |
+| `python3` | None (requires manual SDK setup) |
+| `go` | None (compiled, cannot auto-instrument) |
+
+### Deploy workflow
+
+App team provides a `Dockerfile` and uses the reusable action:
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Deploy
+        uses: mintun-myo-2020/eggtive-infra/.github/actions/deploy-container@main
+        with:
+          app-name: payments
+          environment: dev
+          role-arn: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+```
+
+The action handles: ECR login → docker build → push → ECS force new deployment → wait for stabilization.
+
+**Inputs:**
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `app-name` | yes | Must match your `container_workloads` key |
+| `environment` | yes | `dev` or `prod` |
+| `role-arn` | yes | From `terraform output app_deploy_role_arns` |
+| `dockerfile` | no | Path to Dockerfile (defaults to `Dockerfile`) |
+| `context` | no | Docker build context (defaults to `.`) |
+| `image-tag` | no | Defaults to git SHA |
 
 ## Monitoring
 
@@ -177,6 +245,22 @@ infra/
 | `make prometheus-ui` | Port-forward Prometheus to localhost:9090 |
 | `make seed-artifacts` | Upload Keycloak/Prometheus/Grafana binaries to S3 |
 | `make taint-backend` | Force rebuild backend EC2 on next apply |
+
+### Why `make down` is manual (not CI)
+
+CloudFront refuses to delete a VPC origin while it's still associated with a distribution. Terraform tries to destroy both simultaneously and fails with `CannotDeleteEntityWhileInUse`.
+
+`make down` handles this with a multi-step workaround:
+
+1. **CLI:** Patch CloudFront config to remove the ALB origin and switch `/api/*` + `/auth/*` behaviors to the S3 maintenance page
+2. **CLI:** Wait for CloudFront deployment to finish
+3. **CLI:** Delete the now-orphaned VPC origin
+4. **TF:** Remove the VPC origin from Terraform state (already deleted by CLI)
+5. **TF:** `terraform apply env_active=false` destroys remaining compute (EC2, RDS, ALB, VPC endpoints)
+
+On `make up`, Terraform recreates the VPC origin + ALB origin from scratch.
+
+This cannot be automated in CI because it requires sequential CLI operations with waits between them. Keep `env_active=true` in `dev.tfvars` so CI never attempts a teardown.
 
 ## CI/CD
 

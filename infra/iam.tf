@@ -449,3 +449,93 @@ resource "aws_iam_role_policy" "infra_cicd_artifacts" {
   })
 }
 
+# Full infrastructure management (Terraform needs to read/write all managed resources)
+resource "aws_iam_role_policy" "infra_cicd_manage" {
+  name = "infra-manage"
+  role = aws_iam_role.infra_cicd.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2"
+        Effect = "Allow"
+        Action = ["ec2:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "ECS"
+        Effect = "Allow"
+        Action = ["ecs:*", "ecr:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "LoadBalancing"
+        Effect = "Allow"
+        Action = ["elasticloadbalancing:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "CloudFront"
+        Effect = "Allow"
+        Action = ["cloudfront:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "ACM"
+        Effect = "Allow"
+        Action = ["acm:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "Route53"
+        Effect = "Allow"
+        Action = ["route53:*", "route53domains:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "S3"
+        Effect = "Allow"
+        Action = ["s3:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "RDS"
+        Effect = "Allow"
+        Action = ["rds:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "IAM"
+        Effect = "Allow"
+        Action = ["iam:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "SSM"
+        Effect = "Allow"
+        Action = ["ssm:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "CloudWatch"
+        Effect = "Allow"
+        Action = ["logs:*", "cloudwatch:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "SES"
+        Effect = "Allow"
+        Action = ["ses:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "Bedrock"
+        Effect = "Allow"
+        Action = ["bedrock:*"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+

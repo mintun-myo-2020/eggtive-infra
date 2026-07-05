@@ -7,9 +7,8 @@ keycloak_instance_type = "t3.small"
 db_instance_class      = "db.t3.micro"
 domain_name            = "internal.dev.eggtive-spm"
 
-# env_active is NOT set here — controlled via CLI:
-#   make up   → -var="env_active=true"
-#   make down → -var="env_active=false"
+# env_active controls whether compute resources (EC2, RDS, ALB, VPC endpoints) are provisioned
+env_active = true
 
 # GitHub OIDC
 github_org  = "mintun-myo-2020"

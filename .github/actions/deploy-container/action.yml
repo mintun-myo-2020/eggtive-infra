@@ -1,0 +1,102 @@
+name: 'Deploy Container to ECS'
+description: 'Build Docker image, push to ECR, and trigger ECS deployment'
+
+inputs:
+  app-name:
+    description: 'App name (must match container_workloads key in infra)'
+    required: true
+  environment:
+    description: 'Target environment (dev, prod)'
+    required: true
+    default: 'dev'
+  role-arn:
+    description: 'IAM role ARN for OIDC auth'
+    required: true
+  aws-region:
+    description: 'AWS region'
+    required: false
+    default: 'ap-southeast-1'
+  dockerfile:
+    description: 'Path to Dockerfile'
+    required: false
+    default: 'Dockerfile'
+  context:
+    description: 'Docker build context'
+    required: false
+    default: '.'
+  image-tag:
+    description: 'Image tag (defaults to git SHA)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v5
+      with:
+        role-to-assume: ${{ inputs.role-arn }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Login to ECR
+      id: ecr-login
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Determine image tag
+      id: tag
+      shell: bash
+      run: |
+        TAG="${{ inputs.image-tag }}"
+        if [ -z "$TAG" ]; then
+          TAG="${{ github.sha }}"
+        fi
+        echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+    - name: Get ECR repository URL
+      id: ecr-repo
+      shell: bash
+      run: |
+        REPO_URL=$(aws ecr describe-repositories \
+          --repository-names "eggtive-spm/${{ inputs.app-name }}" \
+          --query 'repositories[0].repositoryUri' --output text)
+        echo "url=$REPO_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Build and push image
+      shell: bash
+      run: |
+        IMAGE="${{ steps.ecr-repo.outputs.url }}:${{ steps.tag.outputs.tag }}"
+        IMAGE_LATEST="${{ steps.ecr-repo.outputs.url }}:latest"
+
+        docker build -t "$IMAGE" -t "$IMAGE_LATEST" \
+          -f "${{ inputs.dockerfile }}" "${{ inputs.context }}"
+        docker push "$IMAGE"
+        docker push "$IMAGE_LATEST"
+        echo "Pushed: $IMAGE"
+
+    - name: Deploy to ECS
+      shell: bash
+      run: |
+        CLUSTER="eggtive-spm-${{ inputs.environment }}"
+        SERVICE="${{ inputs.app-name }}"
+
+        aws ecs update-service \
+          --cluster "$CLUSTER" \
+          --service "$SERVICE" \
+          --force-new-deployment \
+          --query 'service.serviceName' --output text
+
+        echo "Deployment triggered for $SERVICE on $CLUSTER"
+
+    - name: Wait for deployment
+      shell: bash
+      run: |
+        CLUSTER="eggtive-spm-${{ inputs.environment }}"
+        SERVICE="${{ inputs.app-name }}"
+
+        echo "Waiting for service to stabilize..."
+        aws ecs wait services-stable \
+          --cluster "$CLUSTER" \
+          --services "$SERVICE" || {
+          echo "WARNING: Service did not stabilize within timeout"
+          exit 1
+        }
+        echo "Deployment complete"

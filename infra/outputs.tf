@@ -90,3 +90,14 @@ output "app_workload_instance_ids" {
   description = "Instance IDs for generic app workloads — use for SSM session"
   value       = { for k, v in aws_instance.app_workload : k => v.id }
 }
+
+# --- Container Workloads (ECS) ---
+output "ecr_repo_urls" {
+  description = "ECR repository URLs for each container app"
+  value       = { for k, v in aws_ecr_repository.app : k => v.repository_url }
+}
+
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = length(aws_ecs_cluster.main) > 0 ? aws_ecs_cluster.main[0].name : "none"
+}
