@@ -110,12 +110,12 @@ resource "aws_cloudfront_distribution" "main" {
 
   # /api/* behavior — ALB when active, S3 maintenance when down
   ordered_cache_behavior {
-    path_pattern                = "/api/*"
-    allowed_methods             = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods              = ["GET", "HEAD"]
-    target_origin_id            = var.env_active ? "alb-backend" : "s3-frontend"
-    viewer_protocol_policy      = "redirect-to-https"
-    response_headers_policy_id  = aws_cloudfront_response_headers_policy.api_no_cache.id
+    path_pattern               = "/api/*"
+    allowed_methods            = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = var.env_active ? "alb-backend" : "s3-frontend"
+    viewer_protocol_policy     = "redirect-to-https"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.api_no_cache.id
 
     forwarded_values {
       query_string = true
@@ -130,12 +130,12 @@ resource "aws_cloudfront_distribution" "main" {
 
   # /auth/* behavior — ALB when active, S3 maintenance when down
   ordered_cache_behavior {
-    path_pattern                = "/auth/*"
-    allowed_methods             = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods              = ["GET", "HEAD"]
-    target_origin_id            = var.env_active ? "alb-backend" : "s3-frontend"
-    viewer_protocol_policy      = "redirect-to-https"
-    response_headers_policy_id  = aws_cloudfront_response_headers_policy.api_no_cache.id
+    path_pattern               = "/auth/*"
+    allowed_methods            = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = var.env_active ? "alb-backend" : "s3-frontend"
+    viewer_protocol_policy     = "redirect-to-https"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.api_no_cache.id
 
     forwarded_values {
       query_string = true

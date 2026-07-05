@@ -267,8 +267,8 @@ resource "aws_iam_role_policy" "app_deploy_frontend" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+      Effect = "Allow"
+      Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
       Resource = [
         aws_s3_bucket.frontend.arn,
         "${aws_s3_bucket.frontend.arn}/*"
@@ -321,8 +321,8 @@ resource "aws_iam_role_policy" "app_deploy_ssm_params" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = ["ssm:GetParameter", "ssm:GetParameters"]
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter", "ssm:GetParameters"]
       Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/cicd/*"
     }]
   })
@@ -355,8 +355,8 @@ resource "aws_iam_role_policy" "infra_cicd_terraform" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
+        Effect = "Allow"
+        Action = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
         Resource = [
           "arn:aws:s3:::${var.project_name}-terraform-state",
           "arn:aws:s3:::${var.project_name}-terraform-state/*"

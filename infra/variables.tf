@@ -134,9 +134,9 @@ variable "app_workloads" {
   EOT
   type = map(object({
     instance_type = string
-    runtime       = string              # java21, java25, go, python3, node20
-    artifact      = string              # filename in S3 under <app-name>/ prefix
-    port          = number              # app listen port
+    runtime       = string # java21, java25, go, python3, node20
+    artifact      = string # filename in S3 under <app-name>/ prefix
+    port          = number # app listen port
     metrics_path  = optional(string, "/metrics")
     health_path   = optional(string, "/health")
   }))
