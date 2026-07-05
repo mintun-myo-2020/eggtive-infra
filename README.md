@@ -260,7 +260,38 @@ CloudFront refuses to delete a VPC origin while it's still associated with a dis
 
 On `make up`, Terraform recreates the VPC origin + ALB origin from scratch.
 
-This cannot be automated in CI because it requires sequential CLI operations with waits between them. Keep `env_active=true` in `dev.tfvars` so CI never attempts a teardown.
+This cannot be automated in CI because it requires sequential CLI operations with waits between them.
+
+## Environment State (`env_active`)
+
+Compute resources (EC2, RDS, ALB, VPC endpoints) are controlled by `env_active`. This is managed via **GitHub environment variables**, not in code.
+
+**Setup (one-time):**
+
+Repo → Settings → Environments → `dev` → Variables:
+- `ENV_ACTIVE` = `true`
+
+**How it works:**
+- CI reads `ENV_ACTIVE` from the GitHub environment and passes it as `-var="env_active=..."` to Terraform
+- Locally, `make up`/`make down` override with `-var="env_active=true/false"`
+- The variable is NOT in `dev.tfvars` — it lives in GitHub so the env state is decoupled from code
+
+**Toggling compute:**
+
+```bash
+# Bring down (for cost savings overnight, etc.)
+gh variable set ENV_ACTIVE --env dev --body "false"
+make down   # handles the VPC origin workaround locally
+
+# Bring back up
+gh variable set ENV_ACTIVE --env dev --body "true"
+make up     # or push any infra change — CI will apply with env_active=true
+```
+
+**Important:** Flipping `ENV_ACTIVE` alone doesn't trigger CI. You either:
+- Push a commit touching `infra/**` to trigger the workflow
+- Re-run the last workflow manually from GitHub Actions UI
+- Use `make down`/`make up` locally for immediate effect
 
 ## CI/CD
 
