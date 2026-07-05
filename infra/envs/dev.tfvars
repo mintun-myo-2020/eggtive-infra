@@ -7,8 +7,9 @@ keycloak_instance_type = "t3.small"
 db_instance_class      = "db.t3.micro"
 domain_name            = "internal.dev.eggtive-spm"
 
-# env_active controls whether compute resources (EC2, RDS, ALB, VPC endpoints) are provisioned
-env_active = true
+# env_active is controlled via GitHub environment variable (ENV_ACTIVE)
+# Locally: use -var="env_active=true/false" override
+# CI reads from: ${{ vars.ENV_ACTIVE }}
 
 # GitHub OIDC
 github_org  = "mintun-myo-2020"

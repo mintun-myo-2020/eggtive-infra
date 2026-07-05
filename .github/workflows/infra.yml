@@ -47,6 +47,7 @@ jobs:
     needs: [lint, check-envs]
     if: needs.check-envs.outputs.has_dev == 'true'
     runs-on: ubuntu-latest
+    environment: dev
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
@@ -70,7 +71,7 @@ jobs:
         working-directory: infra
         run: |
           set +e
-          terraform plan -var-file=envs/dev.tfvars -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          terraform plan -var-file=envs/dev.tfvars -var="env_active=${{ vars.ENV_ACTIVE }}" -no-color -out=tfplan 2>&1 | tee plan_output.txt
           PLAN_EXIT=$?
           set -e
           if [ $PLAN_EXIT -ne 0 ]; then
@@ -110,6 +111,7 @@ jobs:
     needs: [lint, check-envs]
     if: needs.check-envs.outputs.has_prod == 'true'
     runs-on: ubuntu-latest
+    environment: prod
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
@@ -132,7 +134,7 @@ jobs:
         id: plan
         working-directory: infra
         run: |
-          terraform plan -var-file=envs/prod.tfvars -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          terraform plan -var-file=envs/prod.tfvars -var="env_active=${{ vars.ENV_ACTIVE }}" -no-color -out=tfplan 2>&1 | tee plan_output.txt
           if grep -q "No changes" plan_output.txt; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
