@@ -101,3 +101,27 @@ output "ecs_cluster_name" {
   description = "ECS cluster name"
   value       = length(aws_ecs_cluster.main) > 0 ? aws_ecs_cluster.main[0].name : "none"
 }
+
+# --- Per-app Databases ---
+output "app_db_endpoints" {
+  description = "RDS endpoints for per-app databases"
+  value       = { for k, v in aws_db_instance.app : k => v.endpoint }
+}
+
+# --- Per-app Frontends ---
+output "app_frontend_urls" {
+  description = "Frontend URLs for per-app CDN distributions"
+  value = {
+    for k, v in local.app_frontends : k => "https://${local.app_frontend_domains[k]}"
+  }
+}
+
+output "app_frontend_buckets" {
+  description = "S3 bucket names for per-app frontends"
+  value       = { for k, v in aws_s3_bucket.app_frontend : k => v.id }
+}
+
+output "app_cloudfront_distribution_ids" {
+  description = "CloudFront distribution IDs for per-app frontends"
+  value       = { for k, v in aws_cloudfront_distribution.app : k => v.id }
+}

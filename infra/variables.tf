@@ -148,6 +148,10 @@ variable "container_workloads" {
     Containerized apps running on ECS Fargate.
     App team provides a Dockerfile in their repo. Platform handles ECR, task def, service, ALB routing.
     CI builds the image, pushes to ECR, and triggers deployment.
+
+    Optional layers:
+    - database: provisions a dedicated RDS instance + SSM params for the app
+    - frontend: provisions S3 bucket + CloudFront distribution + ACM cert + DNS record
   EOT
   type = map(object({
     cpu           = number # Fargate CPU units: 256, 512, 1024, 2048, 4096
@@ -157,6 +161,22 @@ variable "container_workloads" {
     health_path   = optional(string, "/health")
     metrics_path  = optional(string, "/metrics")
     runtime       = optional(string, "") # java21, node20, python3, go — for OTel auto-instrumentation
+
+    # Per-app database (optional) — creates dedicated RDS instance
+    database = optional(object({
+      instance_class = optional(string, "db.t3.micro")
+      engine         = optional(string, "postgres")
+      engine_version = optional(string, "16")
+      db_name        = optional(string, "appdb")
+      username       = optional(string, "dbadmin")
+      storage_gb     = optional(number, 20)
+      max_storage_gb = optional(number, 50)
+    }))
+
+    # Per-app frontend (optional) — creates S3 + CloudFront + cert + DNS
+    frontend = optional(object({
+      subdomain = string # app name only, e.g. "social" → dev.social.eggtive.com
+    }))
   }))
   default = {}
 }

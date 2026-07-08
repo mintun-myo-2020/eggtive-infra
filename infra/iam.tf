@@ -267,10 +267,17 @@ resource "aws_iam_role_policy" "app_deploy_frontend" {
     Statement = [{
       Effect = "Allow"
       Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
-      Resource = [
-        aws_s3_bucket.frontend.arn,
-        "${aws_s3_bucket.frontend.arn}/*"
-      ]
+      Resource = concat(
+        [
+          aws_s3_bucket.frontend.arn,
+          "${aws_s3_bucket.frontend.arn}/*"
+        ],
+        # If the app has its own frontend bucket, grant access to that too
+        contains(keys(local.app_frontends), each.key) ? [
+          aws_s3_bucket.app_frontend[each.key].arn,
+          "${aws_s3_bucket.app_frontend[each.key].arn}/*"
+        ] : []
+      )
     }]
   })
 }
