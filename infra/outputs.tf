@@ -65,7 +65,7 @@ output "artifacts_bucket" {
 
 # --- CI/CD ---
 output "app_deploy_role_arns" {
-  description = "IAM role ARNs for each app's GitHub Actions deploy — set as AWS_CICD_ROLE_ARN in each app repo"
+  description = "IAM role ARNs for each app's GitHub Actions deploy — set as AWS_DEPLOY_ROLE_ARN in each app repo"
   value       = { for k, v in aws_iam_role.app_deploy : k => v.arn }
 }
 
