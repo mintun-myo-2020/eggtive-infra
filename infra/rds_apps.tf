@@ -26,7 +26,7 @@ resource "aws_security_group" "app_rds" {
   for_each = local.active_app_databases
 
   name_prefix = "${var.project_name}-${var.environment}-${each.key}-rds-"
-  description = "${each.key} RDS - allow inbound from app's ECS tasks"
+  description = "${each.key} RDS - allow inbound from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
