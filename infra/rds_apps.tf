@@ -92,12 +92,19 @@ resource "aws_db_instance" "app" {
 }
 
 # --- Store credentials in SSM (app reads these at runtime) ---
+# DB_URL format depends on runtime:
+#   java21/java25 → jdbc:postgresql://host:port/dbname
+#   go/node20/python3 → postgres://user:pass@host:port/dbname
 resource "aws_ssm_parameter" "app_db_url" {
   for_each = local.active_app_databases
 
-  name  = "/${var.project_name}/${var.environment}/${each.key}/db/url"
-  type  = "SecureString"
-  value = "jdbc:postgresql://${aws_db_instance.app[each.key].endpoint}/${each.value.db_name}"
+  name = "/${var.project_name}/${var.environment}/${each.key}/db/url"
+  type = "SecureString"
+  value = (
+    contains(["java21", "java25"], try(var.container_workloads[each.key].runtime, ""))
+    ? "jdbc:postgresql://${aws_db_instance.app[each.key].endpoint}/${each.value.db_name}"
+    : "postgres://${each.value.username}:${random_password.app_db[each.key].result}@${aws_db_instance.app[each.key].endpoint}/${each.value.db_name}"
+  )
 }
 
 resource "aws_ssm_parameter" "app_db_username" {
