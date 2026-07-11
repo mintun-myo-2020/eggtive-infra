@@ -284,7 +284,7 @@ resource "aws_lb_target_group" "container_workload" {
 resource "aws_lb_listener_rule" "container_workload" {
   for_each     = local.active_containers
   listener_arn = aws_lb_listener.http[0].arn
-  priority     = 200 + index(keys(local.active_containers), each.key)
+  priority     = 300 + index(keys(local.active_containers), each.key)
 
   action {
     type             = "forward"
