@@ -8,6 +8,12 @@ locals {
   ]) : toset([])
 }
 
+import {
+  for_each = local.log_groups
+  to       = aws_cloudwatch_log_group.services[each.value]
+  id       = each.value
+}
+
 resource "aws_cloudwatch_log_group" "services" {
   for_each = local.log_groups
 
