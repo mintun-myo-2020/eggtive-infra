@@ -257,7 +257,7 @@ resource "aws_s3_object" "app_frontend_config" {
   key          = "config.json"
   content_type = "application/json"
   content = jsonencode({
-    apiBaseUrl = "https://${local.app_frontend_domains[each.key]}/api"
+    apiBaseUrl = "https://${local.app_frontend_domains[each.key]}/api/${each.key}"
   })
 }
 

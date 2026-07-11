@@ -293,7 +293,7 @@ resource "aws_lb_listener_rule" "container_workload" {
 
   condition {
     path_pattern {
-      values = ["/${each.key}/*"]
+      values = ["/api/${each.key}/*"]
     }
   }
 }
