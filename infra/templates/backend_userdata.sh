@@ -56,7 +56,7 @@ set -euo pipefail
 # Download JAR if not present
 if [ ! -f /opt/app/backend.jar ]; then
   echo "Downloading backend JAR from S3..."
-  aws s3 cp "s3://${s3_artifact_bucket}/spm-app.jar" /opt/app/backend.jar
+  aws s3 cp "s3://${s3_artifact_bucket}/spm/spm-app.jar" /opt/app/backend.jar
   chown appuser:appuser /opt/app/backend.jar
   echo "Backend JAR downloaded"
 fi
@@ -122,7 +122,7 @@ chmod +x /opt/deploy/backend-setup.sh
 cat > /opt/deploy/deploy.sh <<DEPLOY
 #!/bin/bash
 set -euo pipefail
-aws s3 cp "s3://${s3_artifact_bucket}/spm-app.jar" /opt/app/backend.jar
+aws s3 cp "s3://${s3_artifact_bucket}/spm/spm-app.jar" /opt/app/backend.jar
 chown appuser:appuser /opt/app/backend.jar
 systemctl restart backend
 DEPLOY

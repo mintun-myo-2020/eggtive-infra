@@ -223,7 +223,7 @@ seed-realm:
 
 seed-backend:
 	@test -f $(BACKEND_JAR) || (echo "ERROR: $(BACKEND_JAR) not found. Build your backend first." && exit 1)
-	aws s3 cp $(BACKEND_JAR) s3://$(PROJECT)-artifacts/spm-app.jar
+	aws s3 cp $(BACKEND_JAR) s3://$(PROJECT)-artifacts/spm/spm-app.jar
 
 seed-frontend:
 	@test -d $(FRONTEND_BUILD) || (echo "ERROR: $(FRONTEND_BUILD) not found. Run npm build first." && exit 1)
