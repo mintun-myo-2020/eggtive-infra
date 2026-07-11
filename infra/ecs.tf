@@ -215,6 +215,21 @@ resource "aws_ecs_task_definition" "app" {
           { name = "NODE_OPTIONS", value = "--require @opentelemetry/auto-instrumentations-node/register" }
         ] : [],
       )
+      # Inject DB credentials from SSM as env vars (only for apps with a database block)
+      secrets = each.value.database != null ? [
+        {
+          name      = "DB_URL"
+          valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/${each.key}/db/url"
+        },
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/${each.key}/db/username"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/${each.key}/db/password"
+        },
+      ] : []
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -234,6 +249,12 @@ resource "aws_ecs_task_definition" "app" {
   ])
 
   tags = { Name = "${var.project_name}-${var.environment}-${each.key}" }
+
+  depends_on = [
+    aws_ssm_parameter.app_db_url,
+    aws_ssm_parameter.app_db_username,
+    aws_ssm_parameter.app_db_password,
+  ]
 }
 
 resource "aws_lb_target_group" "container_workload" {

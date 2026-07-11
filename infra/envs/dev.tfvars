@@ -20,5 +20,28 @@ trusted_apps = {
   spm = {
     github_repo = "spm"
   }
+  social = {
+    github_repo = "social"
+  }
 }
 tenant_name = "Eggtive SPM"
+
+# Container workloads (ECS Fargate)
+container_workloads = {
+  social = {
+    cpu           = 256
+    memory        = 512
+    port          = 8080
+    desired_count = 1
+    runtime       = "java21"
+
+    database = {
+      instance_class = "db.t3.micro"
+      db_name        = "socialdb"
+    }
+
+    frontend = {
+      subdomain = "social"
+    }
+  }
+}
