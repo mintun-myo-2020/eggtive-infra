@@ -33,7 +33,7 @@ container_workloads = {
     memory        = 512
     port          = 8080
     desired_count = 1
-    runtime       = "java21"
+    runtime       = "go"
 
     database = {
       instance_class = "db.t3.micro"
